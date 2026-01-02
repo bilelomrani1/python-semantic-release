@@ -1254,3 +1254,129 @@ def test_changelog_prevent_external_path_traversal_dir(
         "Template directory must be inside of the repository directory."
         in result.stderr
     )
+
+
+@pytest.mark.usefixtures(repo_w_trunk_only_conventional_commits.__name__)
+def test_changelog_generated_in_output_dir(
+    example_project_dir: ExProjectDir,
+    update_pyproject_toml: UpdatePyprojectTomlFn,
+    run_cli: RunCliFn,
+):
+    # Setup: Configure output_dir to a subdirectory
+    output_subdir = "docs"
+    update_pyproject_toml("tool.semantic_release.changelog.output_dir", output_subdir)
+    update_pyproject_toml(
+        "tool.semantic_release.changelog.mode", ChangelogMode.INIT.value
+    )
+
+    # Remove the default changelog if it exists
+    default_changelog = example_project_dir / "CHANGELOG.md"
+    if default_changelog.exists():
+        default_changelog.unlink()
+
+    # Act
+    cli_cmd = [MAIN_PROG_NAME, CHANGELOG_SUBCMD]
+    result = run_cli(cli_cmd[1:])
+
+    # Evaluate
+    assert_successful_exit_code(result, cli_cmd)
+
+    # Changelog should be in output_dir, not project root
+    expected_changelog = example_project_dir / output_subdir / "CHANGELOG.md"
+    assert expected_changelog.exists(), f"Expected changelog at {expected_changelog}"
+    assert not default_changelog.exists(), "Changelog should not be in project root"
+
+
+@pytest.mark.usefixtures(repo_w_trunk_only_conventional_commits.__name__)
+def test_changelog_file_with_directory_component_backward_compatibility(
+    example_project_dir: ExProjectDir,
+    update_pyproject_toml: UpdatePyprojectTomlFn,
+    run_cli: RunCliFn,
+):
+    # Test backward compatibility: changelog_file with directory works when output_dir is default.
+    # This ensures we don't break existing configurations where users specify:
+    #     changelog_file = "docs/CHANGELOG.md"
+    # without setting output_dir (which defaults to ".").
+
+    # Setup: Configure changelog_file with a directory component, no output_dir
+    update_pyproject_toml(
+        "tool.semantic_release.changelog.default_templates.changelog_file",
+        "docs/CHANGELOG.md",
+    )
+    update_pyproject_toml(
+        "tool.semantic_release.changelog.mode", ChangelogMode.INIT.value
+    )
+
+    # Create the docs directory
+    docs_dir = example_project_dir / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Remove the default changelog if it exists
+    default_changelog = example_project_dir / "CHANGELOG.md"
+    if default_changelog.exists():
+        default_changelog.unlink()
+
+    # Act
+    cli_cmd = [MAIN_PROG_NAME, CHANGELOG_SUBCMD]
+    result = run_cli(cli_cmd[1:])
+
+    # Evaluate
+    assert_successful_exit_code(result, cli_cmd)
+
+    # Changelog should be in docs/ subdirectory as specified
+    expected_changelog = example_project_dir / "docs" / "CHANGELOG.md"
+    assert expected_changelog.exists(), f"Expected changelog at {expected_changelog}"
+    assert not default_changelog.exists(), "Changelog should not be in project root"
+
+
+@pytest.mark.usefixtures(repo_w_trunk_only_conventional_commits.__name__)
+def test_changelog_update_mode_reads_from_output_dir(
+    example_project_dir: ExProjectDir,
+    update_pyproject_toml: UpdatePyprojectTomlFn,
+    run_cli: RunCliFn,
+):
+    # Setup: Configure output_dir to a subdirectory with update mode
+    output_subdir = "docs"
+    update_pyproject_toml("tool.semantic_release.changelog.output_dir", output_subdir)
+    update_pyproject_toml(
+        "tool.semantic_release.changelog.mode", ChangelogMode.UPDATE.value
+    )
+
+    # Create output directory and place an existing changelog there
+    output_dir = example_project_dir / output_subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a changelog with a marker we can verify is preserved
+    existing_content = """\
+# CHANGELOG
+
+<!-- version list -->
+
+## v0.1.0 (1999-01-01)
+
+### Fix
+
+- Existing entry that should be preserved
+"""
+    changelog_in_output = output_dir / "CHANGELOG.md"
+    changelog_in_output.write_text(existing_content, encoding="utf-8")
+
+    # Remove any changelog in project root to ensure we're reading from output_dir
+    default_changelog = example_project_dir / "CHANGELOG.md"
+    if default_changelog.exists():
+        default_changelog.unlink()
+
+    # Act
+    cli_cmd = [MAIN_PROG_NAME, CHANGELOG_SUBCMD]
+    result = run_cli(cli_cmd[1:])
+
+    # Evaluate
+    assert_successful_exit_code(result, cli_cmd)
+
+    # Changelog should still be in output_dir
+    assert changelog_in_output.exists(), f"Expected changelog at {changelog_in_output}"
+    assert not default_changelog.exists(), "Changelog should not be in project root"
+
+    # Verify the existing content was preserved (update mode should keep old entries)
+    updated_content = changelog_in_output.read_text(encoding="utf-8")
+    assert "Existing entry that should be preserved" in updated_content
