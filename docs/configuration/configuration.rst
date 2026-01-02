@@ -727,6 +727,8 @@ reStructuredText    ``..\n    version list``
 ``template_dir``
 ****************
 
+*Remote filesystem support introduced in v10.6.0*
+
 **Type:** ``str``
 
 When files exist within the specified directory, they will be used as templates for
@@ -737,6 +739,17 @@ project directory.
 No default changelog template or release notes template will be used when this directory
 exists and the directory is not empty. If the directory is empty, the default changelog
 template will be used.
+
+As of v10.6.0, ``template_dir`` supports remote filesystem URLs in addition to local
+paths. This allows you to store your changelog templates in a central location such
+as a GitHub repository, S3 bucket, or any other filesystem supported by `fsspec`_.
+See :ref:`changelog-templates-remote` for usage examples.
+
+.. _fsspec: https://filesystem-spec.readthedocs.io/
+
+.. warning::
+   Chained protocols (e.g., ``simplecache::s3://...``) are not supported for security
+   reasons.
 
 This option is discussed in more detail at :ref:`changelog-templates`
 
@@ -775,6 +788,39 @@ will be rendered relative to ``output_dir`` instead of the project root.
 
    - :ref:`monorepos` - Using ``output_dir`` to consolidate changelogs in monorepo documentation directories
    - :ref:`changelog-templates` - Custom template directory rendering with ``output_dir``
+
+----
+
+.. _config-changelog-storage_options:
+
+``storage_options``
+*******************
+
+*Introduced in v10.6.0*
+
+**Type:** ``dict[str, str | EnvConfigVar]``
+
+Authentication and configuration options for remote template directories. This setting
+is only relevant when using a remote URL for :ref:`template_dir <config-changelog-template_dir>`.
+
+Values can be plain strings or environment variable references using the ``{ env = "VAR_NAME" }``
+syntax.
+
+This setting is passed to the underlying `fsspec`_ filesystem. Refer to the fsspec documentation
+for available options per protocol.
+
+**Example:** GitHub private repository authentication
+
+.. code-block:: toml
+
+    [tool.semantic_release.changelog]
+    template_dir = "github://myorg:private-repo@main/templates"
+
+    [tool.semantic_release.changelog.storage_options]
+    username = { env = "GITHUB_TOKEN" }
+    token = { env = "GITHUB_TOKEN" }
+
+**Default:** ``{}`` (empty)
 
 ----
 

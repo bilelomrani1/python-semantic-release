@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cat:*)",
+      "Bash(python -m sphinx:*)",
+      "Bash(ruff check:*)",
+      "WebFetch(domain:filesystem-spec.readthedocs.io)",
+      "Bash(git remote:*)",
+      "Bash(git remote add:*)",
+      "Bash(gh issue view:*)",
+      "Bash(uv run python:*)",
+      "Bash(tox:*)",
+      "Bash(rm:*)",
+      "Bash(head:*)",
+      "Bash(mypy:*)",
+      "Bash(ruff format:*)",
+      "Bash(git -C /Users/bilelomrani/Documents/Personal.nosync/python-semantic-release log --oneline --all)",
+      "Bash(git checkout:*)",
+      "Bash(.tox/bin/python -m pytest:*)",
+      "Bash(grep:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(.venv/bin/python -m pytest:*)"
+    ]
+  }
+}
